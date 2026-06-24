@@ -7,3 +7,8 @@
   from = "/card.svg"
   to = "/.netlify/functions/card"
   status = 200
+
+[[redirects]]
+  from = "/api/prs"
+  to = "/.netlify/functions/prs"
+  status = 200

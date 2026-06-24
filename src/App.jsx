@@ -2,26 +2,7 @@ import { useState, useEffect } from 'react';
 import { getUserData, getPRs } from './github';
 import { renderCard } from './render';
 import themes from './themes';
-
-const USAGE = `Usage:  /?username=<github_user>
-
-Optional params:
-  theme     ${Object.keys(themes).join(' | ')}
-  per_page  items per page (default 10, max 100)
-  page      page number (default 1)
-
-Example:
-  /?username=4drian0rtiz&theme=TokyoNight&per_page=5`;
-
-const msgStyle = {
-	margin: 0,
-	padding: '2rem',
-	fontFamily: "'JetBrains Mono', monospace",
-	background: '#1e1e2e',
-	color: '#cdd6f4',
-	minHeight: '100vh',
-	whiteSpace: 'pre',
-};
+import QueryExplorer from './QueryExplorer';
 
 export default function App() {
 	const [svg, setSvg] = useState('');
@@ -48,9 +29,19 @@ export default function App() {
 			.finally(() => setLoading(false));
 	}, []);
 
-	if (noParams) return <pre style={msgStyle}>{USAGE}</pre>;
-	if (loading) return <pre style={msgStyle}>Loading...</pre>;
-	if (error) return <pre style={{ ...msgStyle, color: '#f38ba8' }}>{error}</pre>;
+	const base = {
+		margin: 0,
+		padding: '2rem',
+		fontFamily: "'JetBrains Mono', monospace",
+		background: '#1e1e2e',
+		color: '#cdd6f4',
+		minHeight: '100vh',
+		whiteSpace: 'pre',
+	};
+
+	if (noParams) return <QueryExplorer />;
+	if (loading) return <pre style={base}>Loading...</pre>;
+	if (error) return <pre style={{ ...base, color: '#f38ba8' }}>{error}</pre>;
 	if (svg) return <div style={{ width: '100%' }} dangerouslySetInnerHTML={{ __html: svg }} />;
 	return null;
 }
