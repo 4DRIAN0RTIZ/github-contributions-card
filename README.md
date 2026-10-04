@@ -73,7 +73,7 @@ https://ghcard.cuevaneander.tech/?username=YOUR_USERNAME&theme=TokyoNight
 
 ## What it shows
 
-- Total PRs authored (excluding your own repos)
+- Latest 100 PRs authored (excluding your own repos)
 - Merged / Open / Closed breakdown
 - Per-PR: title, repository, star count, status
-- Pagination support for large contribution histories
+- Pagination over the latest 100 PRs

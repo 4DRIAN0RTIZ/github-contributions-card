@@ -27,17 +27,21 @@ const SORT_OPTIONS = [
 	{ value: 'stars',    label: 'Menos estrellas primero' },
 ];
 
-function Label({ children }) {
+function Label({ children, htmlFor }) {
 	return (
-		<span style={{ fontSize: 10, letterSpacing: 2, color: C.fgDim, textTransform: 'uppercase' }}>
+		<label
+			htmlFor={htmlFor}
+			style={{ fontSize: 10, letterSpacing: 2, color: C.fgDim, textTransform: 'uppercase', cursor: 'pointer' }}
+		>
 			{children}
-		</span>
+		</label>
 	);
 }
 
-function Input({ value, onChange, placeholder, type = 'text', style }) {
+function Input({ value, onChange, placeholder, type = 'text', id, style }) {
 	return (
 		<input
+			id={id}
 			type={type}
 			value={value}
 			onChange={e => onChange(e.target.value)}
@@ -59,9 +63,10 @@ function Input({ value, onChange, placeholder, type = 'text', style }) {
 	);
 }
 
-function Select({ value, onChange, options }) {
+function Select({ value, onChange, options, id }) {
 	return (
 		<select
+			id={id}
 			value={value}
 			onChange={e => onChange(e.target.value)}
 			style={{
@@ -152,26 +157,20 @@ export default function QueryExplorer() {
 		setError('');
 		setResult(null);
 
-		const body = { username: username.trim() };
-		const filters = {};
-		if (status)   filters.status    = status;
-		if (starsMin) filters.stars_min = Number(starsMin);
-		if (dateFrom) filters.date_from = dateFrom;
-		if (dateTo)   filters.date_to   = dateTo;
-		if (Object.keys(filters).length) body.filters = filters;
-		body.sort  = sort;
-		body.limit = Number(limit) || 10;
+		const params = new URLSearchParams({ username: username.trim() });
+		if (status)   params.set('status', status);
+		if (starsMin)  params.set('stars_min', starsMin);
+		if (dateFrom)  params.set('date_from', dateFrom);
+		if (dateTo)    params.set('date_to', dateTo);
+		params.set('sort', sort);
+		params.set('limit', String(Number(limit) || 10));
 
-		const bodyStr = JSON.stringify(body, null, 2);
-		setReqBody(bodyStr);
+		const reqBody = params.toString();
+		setReqBody(reqBody);
 		setLoading(true);
 
 		try {
-			const res = await fetch('/api/prs', {
-				method: 'QUERY',
-				headers: { 'Content-Type': 'application/json' },
-				body: bodyStr,
-			});
+			const res = await fetch(`/api/prs?${reqBody}`);
 			const json = await res.json();
 			setResult({ status: res.status, ok: res.ok, data: json });
 			setActiveTab('results');
@@ -182,9 +181,9 @@ export default function QueryExplorer() {
 		}
 	}
 
-	const field = (label, children) => (
+	const field = (label, children, id) => (
 		<div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-			<Label>{label}</Label>
+			<Label htmlFor={id}>{label}</Label>
 			{children}
 		</div>
 	);
@@ -262,7 +261,7 @@ export default function QueryExplorer() {
 						letterSpacing: 2,
 						padding: '4px 12px',
 					}}>
-						QUERY
+						GET
 					</span>
 					<code style={{ color: C.fgDim, fontSize: 13 }}>
 						/api/prs
@@ -283,13 +282,15 @@ export default function QueryExplorer() {
 					gap: 16,
 				}}>
 					<div style={{ gridColumn: '1 / -1' }}>
-						{field('username *',
-							<Input value={username} onChange={setUsername} placeholder="4drian0rtiz" />
-						)}
+					{field('username *',
+						<Input id="qe-username" value={username} onChange={setUsername} placeholder="4drian0rtiz" />,
+						'qe-username'
+					)}
 					</div>
 
 					{field('status',
 						<Select
+							id="qe-status"
 							value={status}
 							onChange={setStatus}
 							options={[
@@ -298,31 +299,38 @@ export default function QueryExplorer() {
 								{ value: 'open', label: 'Open' },
 								{ value: 'closed', label: 'Closed' },
 							]}
-						/>
+						/>,
+						'qe-status'
 					)}
 
 					{field('stars mínimas',
-						<Input value={starsMin} onChange={setStarsMin} placeholder="0" type="number" />
+						<Input id="qe-stars" value={starsMin} onChange={setStarsMin} placeholder="0" type="number" />,
+						'qe-stars'
 					)}
 
 					{field('fecha desde',
-						<Input value={dateFrom} onChange={setDateFrom} placeholder="2025-01-01" type="date" />
+						<Input id="qe-date-from" value={dateFrom} onChange={setDateFrom} placeholder="2025-01-01" type="date" />,
+						'qe-date-from'
 					)}
 
 					{field('fecha hasta',
-						<Input value={dateTo} onChange={setDateTo} placeholder="2026-06-24" type="date" />
+						<Input id="qe-date-to" value={dateTo} onChange={setDateTo} placeholder="2026-06-24" type="date" />,
+						'qe-date-to'
 					)}
 
 					{field('ordenar por',
-						<Select value={sort} onChange={setSort} options={SORT_OPTIONS} />
+						<Select id="qe-sort" value={sort} onChange={setSort} options={SORT_OPTIONS} />,
+						'qe-sort'
 					)}
 
 					{field('límite',
 						<Select
+							id="qe-limit"
 							value={limit}
 							onChange={setLimit}
 							options={[5, 10, 20, 50, 100].map(n => ({ value: String(n), label: String(n) }))}
-						/>
+						/>,
+						'qe-limit'
 					)}
 
 					<div style={{ gridColumn: '1 / -1' }}>
@@ -343,7 +351,7 @@ export default function QueryExplorer() {
 								width: '100%',
 							}}
 						>
-							{loading ? 'Enviando QUERY...' : '▶  Enviar QUERY'}
+							{loading ? 'Buscando...' : '▶  Buscar'}
 						</button>
 					</div>
 				</div>
@@ -371,7 +379,7 @@ export default function QueryExplorer() {
 						{/* Tabs */}
 						<div style={{ display: 'flex', borderBottom: `1px solid ${C.border}` }}>
 							{tab('results', 'Resultados')}
-							{tab('request', 'Request body')}
+							{tab('request', 'URL')}
 							{tab('raw', 'Raw JSON')}
 						</div>
 
@@ -461,8 +469,7 @@ export default function QueryExplorer() {
 									lineHeight: 1.6,
 									whiteSpace: 'pre-wrap',
 								}}>
-									<span style={{ color: C.fgDim }}>QUERY /api/prs HTTP/1.1{'\n'}</span>
-									<span style={{ color: C.fgDim }}>Content-Type: application/json{'\n\n'}</span>
+									<span style={{ color: C.fgDim }}>GET /api/prs?{'\n'}</span>
 									{reqBody}
 								</pre>
 							)}

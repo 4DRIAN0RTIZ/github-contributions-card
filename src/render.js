@@ -23,7 +23,7 @@ function formatStars(n) {
 	return `★ ${n}`;
 }
 
-function renderCard({ user, prs, avatarBase64, theme: t, themeName, page = 1, perPage = 10 }) {
+function renderCard({ user, prs, avatarBase64, theme: t, themeName, page = 1, perPage = 10, totalCount = 0 }) {
 	const merged = prs.filter((pr) => pr.pull_request?.merged_at).length;
 	const open = prs.filter((pr) => pr.state === 'open').length;
 	const closed = prs.filter((pr) => pr.state === 'closed' && !pr.pull_request?.merged_at).length;
@@ -99,12 +99,12 @@ function renderCard({ user, prs, avatarBase64, theme: t, themeName, page = 1, pe
   <rect x="0" y="0" width="${W}" height="${TOP_H}" rx="10" fill="${t.statusBg}"/>
   <rect x="0" y="10" width="${W}" height="${TOP_H - 10}" fill="${t.statusBg}"/>
   <text x="${PAD}" y="17" font-family="'JetBrains Mono',monospace" font-size="10.5" fill="${t.yellow}" font-weight="600"> github-contributions.nvim </text>
-  <text x="${W - PAD}" y="17" font-family="'JetBrains Mono',monospace" font-size="10.5" fill="${t.fgDim}" text-anchor="end"> ${prs.length} PRs </text>`;
+  <text x="${W - PAD}" y="17" font-family="'JetBrains Mono',monospace" font-size="10.5" fill="${t.fgDim}" text-anchor="end"> ${totalCount > 0 && totalCount > prs.length ? `${prs.length} of ${totalCount} PRs` : `${prs.length} PRs`} </text>`;
 
 	// Header: avatar + user info
 	const INFO_X = AV_X + AV_R * 2 + 16;
 	const header = `
-  <image href="${avatarBase64}" x="${AV_X}" y="${AV_Y}" width="${AV_R * 2}" height="${AV_R * 2}" clip-path="url(#av)" preserveAspectRatio="xMidYMid slice"/>
+  <image href="${esc(avatarBase64)}" x="${AV_X}" y="${AV_Y}" width="${AV_R * 2}" height="${AV_R * 2}" clip-path="url(#av)" preserveAspectRatio="xMidYMid slice"/>
   <circle cx="${AV_CX}" cy="${AV_CY}" r="${AV_R}" fill="none" stroke="${t.yellow}" stroke-width="1.5" opacity="0.8"/>
   <text x="${INFO_X}" y="${AV_Y + 22}" font-family="'JetBrains Mono',monospace" font-size="20" font-weight="700" fill="${t.yellow}">${esc(user.login)}</text>
   <text x="${INFO_X}" y="${AV_Y + 41}" font-family="'JetBrains Mono',monospace" font-size="12.5" fill="${t.fg}">${esc(trunc(user.name || '', 40))}</text>
@@ -125,9 +125,11 @@ function renderCard({ user, prs, avatarBase64, theme: t, themeName, page = 1, pe
 	}).join('');
 
 	// List header
-	const paginationInfo = totalPages > 1
-		? `page ${currentPage}/${totalPages} · ${start + 1}–${start + display.length} of ${prs.length}`
-		: `${display.length} of ${prs.length}`;
+	const paginationInfo = totalCount > 0 && totalCount > prs.length
+		? `showing latest ${prs.length} of ${totalCount} · page ${currentPage}/${totalPages}`
+		: totalPages > 1
+			? `page ${currentPage}/${totalPages} · ${start + 1}–${start + display.length} of ${prs.length}`
+			: `${display.length} of ${prs.length}`;
 	const listHeader = `
   <text x="${PAD}" y="${LIST_LABEL_Y + 28}" font-family="'JetBrains Mono',monospace" font-size="9.5" fill="${t.fgDim}" letter-spacing="2">\u2500\u2500 CONTRIBUTIONS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 ${paginationInfo}</text>`;
 
@@ -179,9 +181,9 @@ function renderCard({ user, prs, avatarBase64, theme: t, themeName, page = 1, pe
   <rect x="0" y="${H - 10}" width="${W}" height="10" rx="10" fill="${t.statusBg}"/>
   <rect x="0" y="${BOT_Y}" width="${W}" height="${BOT_H - 10}" fill="${t.statusBg}"/>
   <text x="${PAD}" y="${BOT_Y + 19}" font-family="'JetBrains Mono',monospace" font-size="10.5" fill="${t.purple}" font-weight="600"> @${esc(user.login)} </text>
-  <text x="${W - PAD}" y="${BOT_Y + 19}" font-family="'JetBrains Mono',monospace" font-size="10.5" fill="${t.fgDim}" text-anchor="end"> ${themeName} </text>`;
+  <text x="${W - PAD}" y="${BOT_Y + 19}" font-family="'JetBrains Mono',monospace" font-size="10.5" fill="${t.fgDim}" text-anchor="end"> ${esc(themeName)} </text>`;
 
-	return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100%" viewBox="0 0 ${W} ${H}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100%" viewBox="0 0 ${W} ${H}">
   ${defs}
   <!-- Background -->
   <rect width="${W}" height="${H}" rx="10" fill="${t.bg}" stroke="${t.bg3}" stroke-width="1"/>
@@ -203,4 +205,35 @@ function renderCard({ user, prs, avatarBase64, theme: t, themeName, page = 1, pe
 </svg>`;
 }
 
-export { renderCard };
+/**
+ * Static error card — message must be one of the allowed set.
+ * @param {{ message: string, theme: object, themeName: string }} opts
+ */
+function renderErrorCard({ message, theme: t, themeName }) {
+	const W = 840;
+	const H = 200;
+	const PAD = 24;
+	const MESSAGE_MAP = {
+		'Missing username': 'Missing username',
+		'User not found': 'User not found',
+		'GitHub rate limit reached': 'GitHub rate limit reached',
+		'Request timed out': 'Request timed out',
+		'Could not load contributions': 'Could not load contributions',
+	};
+	const safeMessage = MESSAGE_MAP[message] ?? 'Could not load contributions';
+
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" rx="10" fill="${t.bg}" stroke="${t.bg3}" stroke-width="1"/>
+  <rect x="0" y="0" width="${W}" height="26" rx="10" fill="${t.statusBg}"/>
+  <rect x="0" y="10" width="${W}" height="16" fill="${t.statusBg}"/>
+  <text x="${PAD}" y="17" font-family="'JetBrains Mono',monospace" font-size="10.5" fill="${t.yellow}" font-weight="600"> github-contributions.nvim </text>
+  <text x="${W / 2}" y="${H / 2}" font-family="'JetBrains Mono',monospace" font-size="16" fill="${t.red}" text-anchor="middle">${esc(safeMessage)}</text>
+  <rect x="0" y="${H - 30}" width="${W}" height="30" rx="0" fill="${t.statusBg}"/>
+  <rect x="0" y="${H - 10}" width="${W}" height="10" rx="10" fill="${t.statusBg}"/>
+  <rect x="0" y="${H - 30}" width="${W}" height="20" fill="${t.statusBg}"/>
+  <text x="${PAD}" y="${H - 11}" font-family="'JetBrains Mono',monospace" font-size="10.5" fill="${t.purple}" font-weight="600"> @error </text>
+  <text x="${W - PAD}" y="${H - 11}" font-family="'JetBrains Mono',monospace" font-size="10.5" fill="${t.fgDim}" text-anchor="end"> ${esc(themeName)} </text>
+</svg>`;
+}
+
+export { renderCard, renderErrorCard };
