@@ -10,6 +10,14 @@ All notable changes to this project are documented here.
 - Drop pipe-encoded milestone from issue title (c4ec512)
 - Complete issue template and prefix title with [roadmap] (fb85a2c)
 
+### Build
+
+- Add git-cliff config and release script (19e9e57)
+
+### CI
+
+- Add changelog and release workflows (d29f2e8)
+
 ### Features
 
 - Add public roadmap issue template (19c1559)
